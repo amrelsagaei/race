@@ -1,0 +1,20 @@
+name: Issue
+description: Report a bug or request a feature
+title: "[Issue]: "
+body:
+  - type: dropdown
+    id: type
+    attributes:
+      label: Type
+      options:
+        - Bug
+        - Feature
+    validations:
+      required: true
+  - type: textarea
+    id: details
+    attributes:
+      label: Details
+      description: For a bug, what happened and how to reproduce it. For a feature, what you want and why.
+    validations:
+      required: true

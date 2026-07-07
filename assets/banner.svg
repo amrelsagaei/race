@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2380 460" width="2380" height="460" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="46%" r="75%">
+      <stop offset="0%" stop-color="#17191f"/>
+      <stop offset="100%" stop-color="#0a0a0d"/>
+    </radialGradient>
+    <pattern id="dots" width="26" height="26" patternUnits="userSpaceOnUse">
+      <circle cx="2" cy="2" r="1.3" fill="#ffffff" opacity="0.03"/>
+    </pattern>
+    <clipPath id="round">
+      <rect x="0" y="0" width="2380" height="460" rx="28"/>
+    </clipPath>
+  </defs>
+
+  <g clip-path="url(#round)">
+    <rect x="0" y="0" width="2380" height="460" fill="url(#bg)"/>
+    <g fill="none" stroke="#ffffff" stroke-width="1.5">
+      <circle cx="1190" cy="230" r="300" opacity="0.045"/>
+      <circle cx="1190" cy="230" r="500" opacity="0.032"/>
+      <circle cx="1190" cy="230" r="700" opacity="0.022"/>
+    </g>
+    <rect x="0" y="0" width="2380" height="460" fill="url(#dots)"/>
+
+    <g transform="translate(931,116)">
+      <rect x="0" y="0" width="10" height="134" rx="4" fill="#f4f4f5"/>
+      <g fill="#f4f4f5">
+        <rect x="10" y="6" width="29" height="29"/>
+        <rect x="68" y="6" width="29" height="29"/>
+        <rect x="39" y="35" width="29" height="29"/>
+        <rect x="97" y="35" width="29" height="29"/>
+        <rect x="10" y="64" width="29" height="29"/>
+        <rect x="68" y="64" width="29" height="29"/>
+      </g>
+      <rect x="10" y="6" width="116" height="87" fill="none" stroke="#f4f4f5" stroke-width="4"/>
+    </g>
+
+    <text x="1096" y="228" font-size="150" font-weight="800" letter-spacing="-3" fill="#f4f4f5">Race</text>
+
+    <text x="1190" y="306" text-anchor="middle" font-size="44" font-weight="500" fill="#9a9aa4">Fire synchronized bursts. Catch the race.</text>
+
+    <g font-size="30" font-weight="700" fill="#c4c4cc">
+      <circle cx="765" cy="366" r="6" fill="#e8a33d"/>
+      <text x="779" y="376">Right-click to launch</text>
+      <circle cx="1152" cy="366" r="6" fill="#e8a33d"/>
+      <text x="1166" y="376">Last-byte sync</text>
+      <circle cx="1429" cy="366" r="6" fill="#e8a33d"/>
+      <text x="1443" y="376">Live results</text>
+    </g>
+  </g>
+</svg>

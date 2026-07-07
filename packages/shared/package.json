@@ -1,0 +1,32 @@
+{
+  "name": "@caido-community/race",
+  "version": "0.0.0",
+  "description": "Specification for the Race plugin",
+  "author": "Amr Elsagaei <info@amrelsagaei.com>",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs",
+      "default": "./dist/index.mjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsdown",
+    "prepare": "pnpm run build",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@caido/sdk-shared": "0.2.2",
+    "zod": "4.3.6"
+  },
+  "devDependencies": {
+    "tsdown": "^0.21.7"
+  }
+}
