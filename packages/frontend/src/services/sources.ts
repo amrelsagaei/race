@@ -1,24 +1,16 @@
 import { err, ok, type RaceSeed, type Result } from "shared";
 
 import { runTransform } from "./script";
-
-type ConnectionInfoInput = {
-  host: string;
-  port: number;
-  isTLS: boolean;
-  SNI: string | undefined;
-};
-type RequestSourceInput = {
-  raw: { raw: string; connectionInfo: ConnectionInfoInput };
-};
+import type { RequestSource } from "./types";
 
 export async function buildRequestSources(
   seed: RaceSeed,
   count: number,
+  group: number,
   script: string | undefined,
   timeoutMs: number,
-): Promise<Result<RequestSourceInput[]>> {
-  const connectionInfo: ConnectionInfoInput = {
+): Promise<Result<RequestSource[]>> {
+  const connectionInfo = {
     host: seed.connection.host,
     port: seed.connection.port,
     isTLS: seed.connection.isTls,
@@ -31,6 +23,7 @@ export async function buildRequestSources(
       raw: seed.raw,
       index,
       count,
+      group,
     }));
     const result = await runTransform(inputs, script, timeoutMs);
     if (result.kind === "Error") {

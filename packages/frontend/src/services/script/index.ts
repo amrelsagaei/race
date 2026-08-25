@@ -1,11 +1,9 @@
 import { err, ok, type Result } from "shared";
 
+import type { TransformInput, TransformResult } from "./transform";
 import InlineWorker from "./worker?worker&inline";
 
-type TransformInput = { raw: string; index: number; count: number };
-type WorkerResponse =
-  | { ok: true; values: string[] }
-  | { ok: false; error: string };
+import { getErrorMessage } from "@/utils/errors";
 
 export function runTransform(
   inputs: TransformInput[],
@@ -13,7 +11,13 @@ export function runTransform(
   timeoutMs: number,
 ): Promise<Result<string[]>> {
   return new Promise((resolve) => {
-    const worker = new InlineWorker();
+    let worker: InstanceType<typeof InlineWorker>;
+    try {
+      worker = new InlineWorker();
+    } catch (error) {
+      resolve(err(getErrorMessage(error)));
+      return;
+    }
 
     let settled = false;
     const finish = (result: Result<string[]>) => {
@@ -30,7 +34,7 @@ export function runTransform(
       timeoutMs,
     );
 
-    worker.onmessage = (event: MessageEvent<WorkerResponse>) => {
+    worker.onmessage = (event: MessageEvent<TransformResult>) => {
       clearTimeout(timer);
       const data = event.data;
       finish(data.ok ? ok(data.values) : err(data.error));
