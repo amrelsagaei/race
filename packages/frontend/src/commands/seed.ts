@@ -12,7 +12,7 @@ export async function extractSeed(
       return err("No request selected");
     }
     const query = await sdk.graphql.request({ id: meta.id });
-    const request = query.request;
+    const request = query?.request;
     if (request === null || request === undefined) {
       return err("Could not load the selected request");
     }
@@ -24,7 +24,6 @@ export async function extractSeed(
         isTls: request.isTls,
         sni: request.sni ?? undefined,
       },
-      sourceRequestId: meta.id,
     });
   }
 
