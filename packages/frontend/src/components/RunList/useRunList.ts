@@ -1,6 +1,6 @@
 import { useConfirm } from "primevue/useconfirm";
 import type { RaceRunSummary } from "shared";
-import { computed, onActivated, onMounted, watch } from "vue";
+import { computed, onMounted, watch } from "vue";
 
 import { activeRun } from "@/services/activeRun";
 import { useRunsStore } from "@/stores/runs";
@@ -40,10 +40,7 @@ export function useRunList() {
   onMounted(() => {
     void store.load();
   });
-  onActivated(() => {
-    void store.load();
-  });
-  watch(runningId, () => {
+  watch([runningId, activeRun.progress], () => {
     void store.load();
   });
 

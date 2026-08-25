@@ -6,7 +6,7 @@ import type { RaceRunSummary } from "shared";
 
 import { useRunDetail } from "./useRunDetail";
 
-import ResultsTable from "@/components/results/ResultsTable.vue";
+import { ResultsTable } from "@/components/ResultsTable";
 import { useSDK } from "@/plugins/sdk";
 import { statusCodeSummary, strategyLabel, timingRange } from "@/utils/format";
 
@@ -70,21 +70,21 @@ const { groupIndex, groupOptions, rows, confirmDelete } = useRunDetail(
       class="flex-1 min-h-0"
       :pt="{
         root: { style: 'display: flex; flex-direction: column; height: 100%;' },
-        body: { class: 'flex-1 p-2 flex flex-col gap-2 min-h-0' },
-        content: { class: 'flex-1 flex flex-col gap-2 min-h-0' },
+        body: { class: 'flex-1 p-0 flex flex-col min-h-0' },
+        content: { class: 'flex-1 flex flex-col min-h-0' },
       }"
     >
       <template #content>
-        <SelectButton
-          v-if="groupOptions.length > 1"
-          v-model="groupIndex"
-          :options="groupOptions"
-          option-label="label"
-          option-value="value"
-          :allow-empty="false"
-          class="flex-shrink-0"
-          :pt="{ root: { style: 'border-color: var(--p-surface-700)' } }"
-        />
+        <div v-if="groupOptions.length > 1" class="flex-shrink-0 p-2">
+          <SelectButton
+            v-model="groupIndex"
+            :options="groupOptions"
+            option-label="label"
+            option-value="value"
+            :allow-empty="false"
+            :pt="{ root: { style: 'border-color: var(--p-surface-700)' } }"
+          />
+        </div>
         <div class="flex-1 min-h-0">
           <ResultsTable :sdk="sdk" :rows="rows" />
         </div>
