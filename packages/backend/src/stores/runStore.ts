@@ -1,171 +1,187 @@
-import path from "path";
-
 import {
   RACE_STORE_VERSION,
   type RaceGroup,
   type RaceRun,
+  type RaceRunBody,
+  RaceRunBodySchema,
   type RaceRunInput,
-  RaceRunSchema,
   type RaceRunSummary,
+  RaceRunSummarySchema,
   type RunStatus,
 } from "shared";
 
 import { requireSDK } from "../sdk";
-import { newId } from "../util/ids";
+import { assertRunId, newId } from "../util/ids";
 
+import { migrateLegacyStore } from "./migrate";
+import {
+  configPath,
+  indexPath,
+  readGroups,
+  removeRunFiles,
+  writeGroup,
+} from "./runFiles";
 import { getProjectDir, readJson, writeJson } from "./storage";
+import { byNewestFirst, foldGroup, newSummary } from "./summary";
 
-type StoreFile = {
-  version: number;
-  runs: unknown[];
-};
-
-function recompute(run: RaceRun): void {
-  const codeCounts: Record<string, number> = {};
-  let entryCount = 0;
-  let completedCount = 0;
-  let errorCount = 0;
-  let minMs: number | undefined;
-  let maxMs: number | undefined;
-
-  for (const group of run.groups) {
-    for (const entry of group.entries) {
-      entryCount += 1;
-      if (entry.status === "error") {
-        errorCount += 1;
-      }
-      const response = entry.response;
-      if (response !== undefined) {
-        completedCount += 1;
-        if (response.statusCode !== undefined) {
-          const key = String(response.statusCode);
-          codeCounts[key] = (codeCounts[key] ?? 0) + 1;
-        }
-        if (response.roundtripTime !== undefined) {
-          const rtt = response.roundtripTime;
-          minMs = minMs === undefined ? rtt : Math.min(minMs, rtt);
-          maxMs = maxMs === undefined ? rtt : Math.max(maxMs, rtt);
-        }
-      }
-    }
-  }
-
-  run.summary.completedGroups = run.groups.length;
-  run.summary.entryCount = entryCount;
-  run.summary.completedCount = completedCount;
-  run.summary.errorCount = errorCount;
-  run.summary.codeCounts = codeCounts;
-  run.summary.minMs = minMs;
-  run.summary.maxMs = maxMs;
-}
+type IndexFile = { version: number; summaries: unknown[] };
 
 class RunStoreClass {
   private projectId: string | undefined;
-  private runs = new Map<string, RaceRun>();
+  private projectApplied = false;
+  private summaries = new Map<string, RaceRunSummary>();
 
-  private file(): string {
-    return path.join(getProjectDir(this.projectId), "runs.json");
+  private dir(): string {
+    return getProjectDir(this.projectId);
+  }
+
+  private indexFile(): string {
+    return indexPath(this.dir());
+  }
+
+  private assertProject(projectId: string | undefined): void {
+    if (this.projectId !== projectId) {
+      throw new Error("The project changed while the run was being saved");
+    }
+  }
+
+  async initialize(): Promise<void> {
+    const project = await requireSDK().projects.getCurrent();
+    if (!this.projectApplied) {
+      await this.switchProject(project?.getId());
+    }
+    await this.finalizeActiveRuns();
   }
 
   async switchProject(projectId: string | undefined): Promise<void> {
+    this.projectApplied = true;
     this.projectId = projectId;
-    this.runs = new Map();
-    const loaded = await readJson<StoreFile>(this.file());
-    const items = Array.isArray(loaded?.runs) ? loaded.runs : [];
+    this.summaries = new Map();
+    await migrateLegacyStore(this.dir());
+    const loaded = await readJson<IndexFile>(this.indexFile());
+    const items = Array.isArray(loaded?.summaries) ? loaded.summaries : [];
     for (const item of items) {
-      const parsed = RaceRunSchema.safeParse(item);
+      const parsed = RaceRunSummarySchema.safeParse(item);
       if (parsed.success) {
-        this.runs.set(parsed.data.summary.id, parsed.data);
+        this.summaries.set(parsed.data.id, parsed.data);
       }
     }
   }
 
   async finalizeActiveRuns(): Promise<void> {
     let changed = false;
-    for (const run of this.runs.values()) {
-      if (run.summary.status === "running") {
-        run.summary.status = "partial";
+    for (const [runId, summary] of this.summaries) {
+      if (summary.status === "running") {
+        this.summaries.set(runId, { ...summary, status: "partial" });
         changed = true;
       }
     }
     if (changed) {
-      await this.persistToDisk();
+      await this.persistIndex();
     }
   }
 
-  async initialize(): Promise<void> {
-    const project = await requireSDK().projects.getCurrent();
-    await this.switchProject(project?.getId());
-  }
-
   list(): RaceRunSummary[] {
-    return [...this.runs.values()]
-      .map((run) => run.summary)
-      .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+    return [...this.summaries.values()].sort(byNewestFirst);
   }
 
-  get(runId: string): RaceRun | undefined {
-    return this.runs.get(runId);
+  async get(runId: string): Promise<RaceRun | undefined> {
+    assertRunId(runId);
+    const summary = this.summaries.get(runId);
+    if (summary === undefined) {
+      return undefined;
+    }
+    const body = await this.readBody(runId);
+    if (body === undefined) {
+      return undefined;
+    }
+    const groups =
+      body.groups.length > 0
+        ? body.groups
+        : await readGroups(this.dir(), runId, summary.completedGroups);
+    return { summary, config: body.config, groups };
   }
 
   async create(input: RaceRunInput): Promise<RaceRunSummary> {
-    const summary: RaceRunSummary = {
-      id: newId("race"),
-      label: input.label,
-      createdAt: new Date().toISOString(),
-      target: input.target,
-      status: "running",
-      strategy: input.config.strategy,
-      groupCount: input.config.groupCount,
-      requestCount: input.config.requestCount,
-      completedGroups: 0,
-      entryCount: 0,
-      completedCount: 0,
-      errorCount: 0,
-      codeCounts: {},
-    };
-    this.runs.set(summary.id, { summary, config: input.config, groups: [] });
-    await this.persistToDisk();
+    const projectId = this.projectId;
+    const summary = newSummary(newId("race"), input);
+    await writeJson(configPath(this.dir(), summary.id), {
+      config: input.config,
+      groups: [],
+    });
+    this.assertProject(projectId);
+    this.summaries.set(summary.id, summary);
+    await this.persistIndex();
     return summary;
   }
 
   async appendGroup(runId: string, group: RaceGroup): Promise<void> {
-    const run = this.runs.get(runId);
-    if (run === undefined) {
+    assertRunId(runId);
+    const projectId = this.projectId;
+    const summary = this.summaries.get(runId);
+    if (summary === undefined) {
       throw new Error(`Unknown run: ${runId}`);
     }
-    run.groups.push(group);
-    recompute(run);
-    await this.persistToDisk();
+    await writeGroup(this.dir(), runId, group);
+    this.assertProject(projectId);
+    if (!this.summaries.has(runId)) {
+      throw new Error(`Unknown run: ${runId}`);
+    }
+    this.summaries.set(runId, foldGroup(summary, group));
+    await this.persistIndex();
   }
 
   async updateStatus(
     runId: string,
     status: RunStatus,
   ): Promise<RaceRunSummary> {
-    const run = this.runs.get(runId);
-    if (run === undefined) {
+    assertRunId(runId);
+    const summary = this.summaries.get(runId);
+    if (summary === undefined) {
       throw new Error(`Unknown run: ${runId}`);
     }
-    run.summary.status = status;
-    await this.persistToDisk();
-    return run.summary;
+    const updated = { ...summary, status };
+    this.summaries.set(runId, updated);
+    await this.persistIndex();
+    return updated;
   }
 
   async remove(runId: string): Promise<void> {
-    this.runs.delete(runId);
-    await this.persistToDisk();
+    assertRunId(runId);
+    const projectId = this.projectId;
+    const summary = this.summaries.get(runId);
+    if (summary === undefined) {
+      return;
+    }
+    this.summaries.delete(runId);
+    const dir = this.dir();
+    await this.persistIndex();
+    this.assertProject(projectId);
+    await removeRunFiles(dir, runId, summary.completedGroups);
   }
 
   async clear(): Promise<void> {
-    this.runs = new Map();
-    await this.persistToDisk();
+    const projectId = this.projectId;
+    const dir = this.dir();
+    const runs = [...this.summaries.values()];
+    this.summaries = new Map();
+    await this.persistIndex();
+    for (const summary of runs) {
+      this.assertProject(projectId);
+      await removeRunFiles(dir, summary.id, summary.completedGroups);
+    }
   }
 
-  private async persistToDisk(): Promise<void> {
-    await writeJson(this.file(), {
+  private async readBody(runId: string): Promise<RaceRunBody | undefined> {
+    const raw = await readJson<unknown>(configPath(this.dir(), runId));
+    const parsed = RaceRunBodySchema.safeParse(raw);
+    return parsed.success ? parsed.data : undefined;
+  }
+
+  private async persistIndex(): Promise<void> {
+    await writeJson(this.indexFile(), {
       version: RACE_STORE_VERSION,
-      runs: [...this.runs.values()],
+      summaries: [...this.summaries.values()],
     });
   }
 }

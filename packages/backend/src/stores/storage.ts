@@ -11,7 +11,7 @@ export function getProjectDir(projectId: string | undefined): string {
   return path.join(getBasePath(), "projects", projectId ?? "default");
 }
 
-async function exists(filePath: string): Promise<boolean> {
+export async function fileExists(filePath: string): Promise<boolean> {
   try {
     await access(filePath);
     return true;
@@ -21,15 +21,22 @@ async function exists(filePath: string): Promise<boolean> {
 }
 
 export async function readJson<T>(filePath: string): Promise<T | undefined> {
-  if (!(await exists(filePath))) {
+  if (!(await fileExists(filePath))) {
     return undefined;
   }
   try {
     const data = await readFile(filePath, "utf-8");
     return JSON.parse(data) as T;
   } catch {
+    await quarantine(filePath);
     return undefined;
   }
+}
+
+async function quarantine(filePath: string): Promise<void> {
+  const target = `${filePath}.corrupt`;
+  await rm(target, { force: true });
+  await rename(filePath, target);
 }
 
 let writeSequence = 0;
@@ -45,4 +52,8 @@ export async function writeJson<T>(filePath: string, data: T): Promise<void> {
     await rm(tempPath, { force: true });
     throw error;
   }
+}
+
+export async function removeFile(filePath: string): Promise<void> {
+  await rm(filePath, { force: true });
 }
