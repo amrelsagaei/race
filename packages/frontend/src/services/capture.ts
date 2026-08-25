@@ -10,40 +10,38 @@ export async function buildRaceGroup(
   startedAt: string,
   poll: PollResult,
 ): Promise<RaceGroup> {
-  const entries: RaceEntry[] = [];
-  for (const burstEntry of poll.entries) {
-    entries.push(
-      await toRaceEntry(sdk, burstEntry, poll.pipelineError, poll.timedOut),
-    );
-  }
+  const entries = await Promise.all(
+    poll.entries.map((entry) => toRaceEntry(sdk, entry, poll)),
+  );
   return { index, startedAt, entries };
+}
+
+function unfinished(poll: PollResult): string | undefined {
+  if (poll.aborted) {
+    return "Cancelled before a response arrived";
+  }
+  return poll.timedOut ? "Timed out waiting for a response" : undefined;
 }
 
 async function toRaceEntry(
   sdk: FrontendSDK,
   entry: BurstEntry,
-  pipelineError: string | undefined,
-  timedOut: boolean,
+  poll: PollResult,
 ): Promise<RaceEntry> {
   const request = { raw: entry.requestRaw, connection: entry.connection };
 
   if (entry.responseId === undefined) {
-    const failure =
-      entry.error ??
-      pipelineError ??
-      (timedOut ? "Timed out waiting for a response" : undefined);
+    const failure = entry.error ?? poll.pipelineError ?? unfinished(poll);
     return {
       request,
       status: failure !== undefined ? "error" : "pending",
       error: failure,
+      sentAt: entry.sentAt,
     };
   }
 
-  let raw = "";
   const result = await sdk.graphql.response({ id: entry.responseId });
-  if (result.response !== null && result.response !== undefined) {
-    raw = result.response.raw;
-  }
+  const raw = result?.response?.raw ?? "";
 
   return {
     request,
@@ -54,5 +52,6 @@ async function toRaceEntry(
       length: entry.length,
     },
     status: "received",
+    sentAt: entry.sentAt,
   };
 }
