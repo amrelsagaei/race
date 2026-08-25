@@ -18,6 +18,8 @@ export function groupToRows(group: RaceGroup, offset: number): ResultRow[] {
       status: entry.response?.statusCode,
       length: entry.response?.length,
       time: entry.response?.roundtripTime,
+      sentAt: entry.sentAt,
+      error: entry.error,
       requestRaw: entry.request.raw,
       responseRaw: entry.response?.raw ?? "",
     };
