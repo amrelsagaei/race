@@ -5,7 +5,7 @@ import type { RaceRun, RaceRunInput, RaceRunSummary } from "./run";
 
 export type API = {
   listRuns: () => Result<RaceRunSummary[]>;
-  getRun: (runId: string) => Result<RaceRun | undefined>;
+  getRun: (runId: string) => Promise<Result<RaceRun | undefined>>;
   persistRun: (input: RaceRunInput) => Promise<Result<RaceRunSummary>>;
   appendGroup: (runId: string, group: RaceGroup) => Promise<Result<void>>;
   updateStatus: (

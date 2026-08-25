@@ -30,6 +30,8 @@ export {
   RACE_STORE_VERSION,
   RaceRunSummarySchema,
   type RaceRunSummary,
+  RaceRunBodySchema,
+  type RaceRunBody,
   RaceRunSchema,
   type RaceRun,
   RaceRunInputSchema,

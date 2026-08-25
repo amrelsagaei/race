@@ -5,10 +5,10 @@ import { RaceConnectionSchema } from "./connection";
 import { RaceGroupSchema } from "./entry";
 import { RunStatusEnumSchema, StrategyEnumSchema } from "./enums";
 
-export const RACE_STORE_VERSION = 1;
+export const RACE_STORE_VERSION = 2;
 
 export const RaceRunSummarySchema = z.object({
-  id: z.string(),
+  id: z.string().regex(/^[A-Za-z0-9_-]+$/),
   label: z.string().optional(),
   createdAt: z.string(),
   target: RaceConnectionSchema,
@@ -25,6 +25,12 @@ export const RaceRunSummarySchema = z.object({
   maxMs: z.number().optional(),
 });
 export type RaceRunSummary = z.infer<typeof RaceRunSummarySchema>;
+
+export const RaceRunBodySchema = z.object({
+  config: RaceRunConfigSchema,
+  groups: z.array(RaceGroupSchema),
+});
+export type RaceRunBody = z.infer<typeof RaceRunBodySchema>;
 
 export const RaceRunSchema = z.object({
   summary: RaceRunSummarySchema,

@@ -18,7 +18,7 @@ export const RaceEntrySchema = z.object({
     .optional(),
   status: EntryStatusEnumSchema,
   error: z.string().optional(),
-  createdAt: z.string().optional(),
+  sentAt: z.string().optional(),
 });
 export type RaceEntry = z.infer<typeof RaceEntrySchema>;
 
