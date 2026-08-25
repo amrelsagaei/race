@@ -8,6 +8,8 @@ import type { FrontendSDK } from "@/types";
 
 defineOptions({ name: "RaceResultEditors" });
 
+const editorSurface = { "--c-bg-subtle": "hsl(var(--c-surface-900))" };
+
 const props = defineProps<{
   sdk: FrontendSDK;
   requestRaw: string;
@@ -55,7 +57,17 @@ watch(
   (value) => setContent(responseView, value),
 );
 
+function release(view: EditorView | undefined): void {
+  try {
+    view?.destroy();
+  } catch {
+    return;
+  }
+}
+
 onBeforeUnmount(() => {
+  release(requestView);
+  release(responseView);
   requestHost.value?.replaceChildren();
   responseHost.value?.replaceChildren();
   requestView = undefined;
@@ -64,17 +76,17 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <Splitter class="h-full min-h-0 !border-0">
+  <Splitter class="h-full min-h-0 !border-0" :style="editorSurface">
     <SplitterPanel :size="50" :min-size="20" class="min-h-0 overflow-hidden">
       <div
         ref="requestHost"
-        class="h-full min-h-0 [&>*]:h-full [&>*]:min-h-0 [&>*]:overflow-hidden"
+        class="flex h-full min-h-0 flex-col overflow-hidden [&>*]:min-h-0 [&>*]:flex-1 [&>*]:overflow-hidden"
       />
     </SplitterPanel>
     <SplitterPanel :size="50" :min-size="20" class="min-h-0 overflow-hidden">
       <div
         ref="responseHost"
-        class="h-full min-h-0 [&>*]:h-full [&>*]:min-h-0 [&>*]:overflow-hidden"
+        class="flex h-full min-h-0 flex-col overflow-hidden [&>*]:min-h-0 [&>*]:flex-1 [&>*]:overflow-hidden"
       />
     </SplitterPanel>
   </Splitter>

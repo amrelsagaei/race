@@ -19,10 +19,16 @@ import type { BackendSDK } from "../types";
 export const apiListRuns = (_sdk: BackendSDK): Result<RaceRunSummary[]> =>
   ok(runStore.list());
 
-export const apiGetRun = (
+export const apiGetRun = async (
   _sdk: BackendSDK,
   runId: string,
-): Result<RaceRun | undefined> => ok(runStore.get(runId));
+): Promise<Result<RaceRun | undefined>> => {
+  try {
+    return ok(await runStore.get(runId));
+  } catch (error) {
+    return err(getErrorMessage(error));
+  }
+};
 
 export const apiPersistRun = async (
   _sdk: BackendSDK,

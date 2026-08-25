@@ -17,7 +17,7 @@
     "verify": "pnpm build:shared && pnpm typecheck && pnpm lint && pnpm format:check && pnpm knip && pnpm check:length && pnpm test"
   },
   "devDependencies": {
-    "@caido-community/dev": "0.1.6",
+    "@caido-community/dev": "0.1.7",
     "@caido/eslint-config": "0.5.0",
     "@caido/tailwindcss": "0.0.1",
     "@vitejs/plugin-vue": "5.2.1",

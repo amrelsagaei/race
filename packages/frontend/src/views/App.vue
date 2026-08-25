@@ -10,7 +10,7 @@ defineOptions({ name: "RaceApp" });
 
 <template>
   <div class="h-full flex flex-col min-h-0">
-    <ConfirmDialog />
+    <ConfirmDialog append-to="self" />
     <div class="flex-1 min-h-0">
       <RunDetail
         v-if="openRun !== undefined"

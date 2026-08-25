@@ -16,6 +16,10 @@ export async function openRaceDialog(
   }
 
   const seed = await extractSeed(sdk, context);
+  if (activeRun.isActive()) {
+    sdk.window.showToast("A race is already running", { variant: "warning" });
+    return;
+  }
   if (seed.kind === "Error") {
     sdk.window.showToast(seed.error, { variant: "warning" });
     return;

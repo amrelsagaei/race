@@ -1,12 +1,13 @@
 import { defineStore } from "pinia";
 import type { RaceRun, RaceRunSummary } from "shared";
-import { ref } from "vue";
+import { ref, shallowRef } from "vue";
 
 import { activeRun } from "@/services/activeRun";
+import { resetRaceView } from "@/services/selection";
 import type { FrontendSDK } from "@/types";
 
 export const useRunsStore = defineStore("race.runs", () => {
-  const sdk = ref<FrontendSDK>();
+  const sdk = shallowRef<FrontendSDK>();
   const runs = ref<RaceRunSummary[]>([]);
 
   async function load(): Promise<void> {
@@ -14,14 +15,16 @@ export const useRunsStore = defineStore("race.runs", () => {
       return;
     }
     const result = await sdk.value.backend.listRuns();
-    if (result.kind === "Ok") {
-      runs.value = result.value;
+    if (result.kind === "Error") {
+      sdk.value.window.showToast(result.error, { variant: "error" });
+      return;
     }
+    runs.value = result.value;
   }
 
-  async function remove(runId: string): Promise<void> {
+  async function remove(runId: string): Promise<boolean> {
     if (sdk.value === undefined) {
-      return;
+      return false;
     }
     if (activeRun.activeRunId.value === runId) {
       activeRun.abort();
@@ -29,10 +32,11 @@ export const useRunsStore = defineStore("race.runs", () => {
     const result = await sdk.value.backend.deleteRun(runId);
     if (result.kind === "Error") {
       sdk.value.window.showToast(result.error, { variant: "error" });
-      return;
+      return false;
     }
     sdk.value.window.showToast("Run deleted", { variant: "success" });
     await load();
+    return true;
   }
 
   async function clear(): Promise<void> {
@@ -61,6 +65,7 @@ export const useRunsStore = defineStore("race.runs", () => {
   function initialize(frontendSdk: FrontendSDK): void {
     sdk.value = frontendSdk;
     frontendSdk.backend.onEvent("project:changed", () => {
+      resetRaceView();
       void load();
     });
     void load();

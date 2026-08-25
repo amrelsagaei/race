@@ -6,6 +6,7 @@ import { createApp } from "vue";
 
 import { registerCommands } from "./commands";
 import { SDKPlugin } from "./plugins/sdk";
+import { markExistingRaceCollection } from "./services/collection";
 import { useRunsStore } from "./stores/runs";
 import "./styles/index.css";
 import type { FrontendSDK } from "./types";
@@ -23,6 +24,7 @@ export const init = (sdk: FrontendSDK) => {
   const root = document.createElement("div");
   Object.assign(root.style, { height: "100%", width: "100%" });
   root.id = "plugin--race";
+  root.classList.add("plugin--race");
   app.mount(root);
 
   sdk.navigation.addPage("/race", { body: root });
@@ -32,4 +34,5 @@ export const init = (sdk: FrontendSDK) => {
 
   useRunsStore(pinia).initialize(sdk);
   registerCommands(sdk);
+  markExistingRaceCollection(sdk);
 };

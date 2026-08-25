@@ -1,8 +1,14 @@
-import { err, ok, type RaceGroup, type Result } from "shared";
+import { ok, type RaceGroup, type Result } from "shared";
 
 import { buildRaceGroup } from "./capture";
-import { toGraphqlStrategy, TRANSFORM_TIMEOUT_MS } from "./constants";
+import { transformBudgetMs } from "./constants";
 import { pollUntilComplete } from "./pollBurst";
+import {
+  cancelBurst,
+  createSession,
+  deleteSession,
+  startBurst,
+} from "./session";
 import { buildRequestSources } from "./sources";
 import type { BurstEntry, BurstParams, LiveResult } from "./types";
 
@@ -15,30 +21,28 @@ export async function runBurst(
   const sources = await buildRequestSources(
     params.seed,
     params.count,
+    params.index,
     params.script,
-    TRANSFORM_TIMEOUT_MS,
+    transformBudgetMs(params.count),
   );
   if (sources.kind === "Error") {
     return sources;
   }
 
-  const created = await sdk.graphql.createReplayPipelineHttpOneSession({
-    input: {
-      collectionId: params.collectionId,
-      requestSources: sources.value,
-      settings: { strategy: toGraphqlStrategy(params.strategy) },
-    },
-  });
-  const session = created.createReplayPipelineHttpOneSession.session;
-  if (session === null || session === undefined) {
-    return err("Pipeline session creation returned no session");
+  const sessionId = await createSession(
+    sdk,
+    params.strategy,
+    params.collectionId,
+    sources.value,
+  );
+  if (sessionId.kind === "Error") {
+    return sessionId;
   }
-  const sessionId = session.id;
 
-  const entryId = await startAndGetEntryId(sdk, sessionId, params.count);
-  if (entryId.kind === "Error") {
-    await deleteSession(sdk, sessionId);
-    return entryId;
+  const started = await startBurst(sdk, sessionId.value, params.count);
+  if (started.kind === "Error") {
+    await deleteSession(sdk, sessionId.value);
+    return started;
   }
 
   const startedAt = new Date().toISOString();
@@ -48,16 +52,21 @@ export async function runBurst(
       : (entries: BurstEntry[]) => {
           params.onProgress?.(entries.map(toLiveResult));
         };
-  const poll = await pollUntilComplete(
-    sdk,
-    entryId.value,
-    params.timeoutMs,
-    onPoll,
-    params.shouldAbort,
-  );
-  const group = await buildRaceGroup(sdk, params.index, startedAt, poll);
-  await deleteSession(sdk, sessionId);
-  return ok(group);
+  try {
+    const poll = await pollUntilComplete(
+      sdk,
+      started.value.entryId,
+      params.timeoutMs,
+      onPoll,
+      params.shouldAbort,
+    );
+    if (poll.aborted || poll.timedOut) {
+      await cancelBurst(sdk, started.value.taskId);
+    }
+    return ok(await buildRaceGroup(sdk, params.index, startedAt, poll));
+  } finally {
+    await deleteSession(sdk, sessionId.value);
+  }
 }
 
 function toLiveResult(entry: BurstEntry, index: number): LiveResult {
@@ -75,42 +84,7 @@ function toLiveResult(entry: BurstEntry, index: number): LiveResult {
     statusCode: entry.statusCode,
     length: entry.length,
     roundtripTime: entry.roundtripTime,
+    sentAt: entry.sentAt,
+    error: entry.error,
   };
-}
-
-async function startAndGetEntryId(
-  sdk: FrontendSDK,
-  sessionId: string,
-  count: number,
-): Promise<Result<string>> {
-  const started = await sdk.graphql.startReplayTask({ sessionId });
-  const payload = started.startReplayTask;
-  if (payload.error !== null && payload.error !== undefined) {
-    return err(`Failed to start pipeline: ${payload.error.__typename}`);
-  }
-  const task = payload.task;
-  if (task === null || task === undefined) {
-    return err("Starting the pipeline returned no task");
-  }
-  const entry = task.replayEntry;
-  if (
-    entry === null ||
-    entry === undefined ||
-    entry.__typename !== "ReplayEntryHttpOnePipeline"
-  ) {
-    return err("The pipeline task did not return an HTTP pipeline entry");
-  }
-  if (entry.httpEntries.length !== count) {
-    return err(
-      `Expected ${count} requests but the pipeline created ${entry.httpEntries.length}`,
-    );
-  }
-  return ok(entry.id);
-}
-
-async function deleteSession(
-  sdk: FrontendSDK,
-  sessionId: string,
-): Promise<void> {
-  await sdk.graphql.deleteReplaySessions({ ids: [sessionId] });
 }

@@ -9,6 +9,7 @@ import ResultEditors from "./ResultEditors.vue";
 
 import type { ResultRow } from "@/services/types";
 import type { FrontendSDK } from "@/types";
+import { formatSentAt } from "@/utils/format";
 
 defineOptions({ name: "RaceResultsTable" });
 
@@ -18,12 +19,35 @@ const selected = ref<ResultRow>();
 watch(
   () => props.rows,
   (rows) => {
-    if (selected.value === undefined || !rows.includes(selected.value)) {
-      selected.value = rows[0];
-    }
+    const current = selected.value;
+    const match =
+      current === undefined
+        ? undefined
+        : rows.find((row) => row.index === current.index);
+    selected.value = match ?? rows[0];
   },
   { immediate: true },
 );
+
+type BodyRowOptions = { context?: { selected?: boolean; index?: number } };
+
+const HOVER = "hover:bg-surface-300/20 dark:hover:bg-surface-700/50";
+
+function rowClass(context: BodyRowOptions["context"]): string {
+  if (context?.selected === true) {
+    return `cursor-pointer ${HOVER} !bg-black/30`;
+  }
+  const stripe =
+    (context?.index ?? 0) % 2 === 0
+      ? "bg-surface-0 dark:bg-surface-800"
+      : "bg-surface-50 dark:bg-surface-900";
+  return `cursor-pointer ${HOVER} ${stripe}`;
+}
+
+const tablePt = {
+  table: { class: "w-full border-separate border-spacing-0" },
+  bodyRow: (options: BodyRowOptions) => ({ class: rowClass(options.context) }),
+};
 
 function statusCodeClass(code: number | undefined): string {
   if (code === undefined) {
@@ -51,9 +75,8 @@ function statusCodeClass(code: number | undefined): string {
           :value="rows"
           selection-mode="single"
           data-key="index"
-          striped-rows
           size="small"
-          :pt="{ table: { class: 'w-full' } }"
+          :pt="tablePt"
         >
           <Column field="index" header="#" style="width: 4rem" />
           <Column header="Method" style="width: 6rem">
@@ -66,9 +89,24 @@ function statusCodeClass(code: number | undefined): string {
               <span class="font-mono text-xs">{{ data.path }}</span>
             </template>
           </Column>
+          <Column header="Sent at" style="width: 9rem">
+            <template #body="{ data }">
+              <span class="font-mono text-xs text-surface-400">
+                {{ formatSentAt(data.sentAt) }}
+              </span>
+            </template>
+          </Column>
           <Column header="Status" style="width: 5rem">
             <template #body="{ data }">
               <span
+                v-if="data.status === undefined && data.error !== undefined"
+                class="font-mono text-xs text-red-400"
+                :title="data.error"
+              >
+                N/A
+              </span>
+              <span
+                v-else
                 :class="['font-mono text-xs', statusCodeClass(data.status)]"
               >
                 {{ data.status ?? "..." }}
@@ -95,11 +133,21 @@ function statusCodeClass(code: number | undefined): string {
       </div>
     </SplitterPanel>
     <SplitterPanel :size="58" :min-size="20" class="min-h-0 overflow-hidden">
-      <ResultEditors
-        :sdk="sdk"
-        :request-raw="selected?.requestRaw ?? ''"
-        :response-raw="selected?.responseRaw ?? ''"
-      />
+      <div class="flex h-full min-h-0 flex-col">
+        <div
+          v-if="selected?.error !== undefined"
+          class="flex-shrink-0 bg-red-500/10 px-3 py-1 font-mono text-xs text-red-400"
+        >
+          {{ selected.error }}
+        </div>
+        <div class="min-h-0 flex-1">
+          <ResultEditors
+            :sdk="sdk"
+            :request-raw="selected?.requestRaw ?? ''"
+            :response-raw="selected?.responseRaw ?? ''"
+          />
+        </div>
+      </div>
     </SplitterPanel>
   </Splitter>
 </template>

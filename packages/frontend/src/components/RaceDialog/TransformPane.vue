@@ -2,17 +2,18 @@
 import ToggleSwitch from "primevue/toggleswitch";
 import { computed } from "vue";
 
+import { TRANSFORM_REFERENCE } from "./reference";
 import ScriptEditor from "./ScriptEditor.vue";
 
 defineOptions({ name: "RaceTransformPane" });
 
 const model = defineModel<string>({ required: true });
 
+const STARTER = "return input.raw;";
+
 const enabled = computed(() => model.value.trim() !== "");
 function onToggle(value: boolean): void {
-  if (!value) {
-    model.value = "";
-  }
+  model.value = value ? STARTER : "";
 }
 </script>
 
@@ -37,30 +38,12 @@ function onToggle(value: boolean): void {
       <summary class="cursor-pointer text-surface-400 hover:text-surface-300">
         Variables and helpers
       </summary>
-      <div class="mt-2 space-y-1 rounded bg-surface-800 p-2 font-mono">
-        <div>
-          <code class="text-primary-400">input.raw</code>,
-          <code class="text-primary-400">input.index</code>,
-          <code class="text-primary-400">input.count</code>
-        </div>
-        <div>
-          <code class="text-primary-400">forge(input.raw)</code>
-          chainable editor, end with
-          <code class="text-primary-400">.build()</code>
-        </div>
-        <div>
-          <code class="text-primary-400">
-            .method() .path() .setHeader() .addHeader() .removeHeader()
-          </code>
-        </div>
-        <div>
-          <code class="text-primary-400">
-            .setQuery() .addQueryParam() .setCookie() .body() .setBodyParam()
-          </code>
-        </div>
-        <div>
-          <code class="text-primary-400">fixContentLength(raw)</code>
-          recompute Content-Length
+      <div
+        class="mt-2 flex select-text flex-col gap-1 rounded bg-surface-800 p-3"
+      >
+        <div v-for="entry in TRANSFORM_REFERENCE" :key="entry.name">
+          <code class="font-mono text-primary-400">{{ entry.name }}</code>
+          <span class="text-surface-300">: {{ entry.description }}</span>
         </div>
       </div>
     </details>

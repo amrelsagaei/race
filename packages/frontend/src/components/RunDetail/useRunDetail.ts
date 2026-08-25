@@ -1,7 +1,8 @@
 import { useConfirm } from "primevue/useconfirm";
 import type { RaceGroup } from "shared";
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 
+import { activeRun } from "@/services/activeRun";
 import { groupToRows } from "@/services/rows";
 import type { ResultRow } from "@/services/types";
 import { useRunsStore } from "@/stores/runs";
@@ -36,15 +37,23 @@ export function useRunDetail(runId: string, onDeleted: () => void) {
     });
   }
   async function removeRun(): Promise<void> {
-    await store.remove(runId);
-    onDeleted();
+    if (await store.remove(runId)) {
+      onDeleted();
+    }
   }
 
-  onMounted(async () => {
+  async function load(): Promise<void> {
     const run = await store.getRun(runId);
     if (run !== undefined) {
       groups.value = run.groups;
     }
+  }
+
+  onMounted(() => {
+    void load();
+  });
+  watch(activeRun.progress, () => {
+    void load();
   });
 
   return { groupIndex, groupOptions, rows, confirmDelete };

@@ -8,10 +8,26 @@ export function formatDate(iso: string): string {
   return date.toLocaleString();
 }
 
+export function formatSentAt(iso: string | undefined): string {
+  if (iso === undefined) {
+    return "";
+  }
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) {
+    return iso;
+  }
+  const millis = String(date.getMilliseconds()).padStart(3, "0");
+  return `${date.toLocaleTimeString(undefined, { hour12: false })}.${millis}`;
+}
+
+const STRATEGY_LABELS: Record<StrategyEnum, string> = {
+  LastByteSynchronization: "Last-byte sync",
+  SinglePacketAttack: "Single packet",
+  Sequential: "Sequential",
+};
+
 export function strategyLabel(strategy: StrategyEnum): string {
-  return strategy === "LastByteSynchronization"
-    ? "Last-byte sync"
-    : "Sequential";
+  return STRATEGY_LABELS[strategy];
 }
 
 export function statusCodeSummary(codeCounts: Record<string, number>): string {
@@ -43,6 +59,8 @@ export function statusClass(status: RunStatus): string {
       return "bg-red-500/20 text-red-300";
     case "partial":
       return "bg-yellow-500/20 text-yellow-300";
+    case "cancelled":
+      return "bg-surface-600/40 text-surface-300";
     default:
       return "bg-surface-600/40 text-surface-300";
   }

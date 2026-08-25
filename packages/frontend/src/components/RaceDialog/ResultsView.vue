@@ -4,7 +4,7 @@ import ProgressBar from "primevue/progressbar";
 import type { RaceRunSummary } from "shared";
 import { computed } from "vue";
 
-import ResultsTable from "@/components/results/ResultsTable.vue";
+import { ResultsTable } from "@/components/ResultsTable";
 import type { ResultRow } from "@/services/types";
 import type { FrontendSDK } from "@/types";
 import { statusCodeSummary, timingRange } from "@/utils/format";
@@ -27,6 +27,31 @@ const total = computed(() => props.rows.length);
 const percent = computed(() =>
   total.value === 0 ? 0 : Math.round((responded.value / total.value) * 100),
 );
+
+const outcome = computed(() => {
+  switch (props.summary?.status) {
+    case "cancelled":
+      return "Cancelled";
+    case "partial":
+      return "Incomplete";
+    case "failed":
+      return "Failed, no request got a response";
+    default:
+      return "Completed";
+  }
+});
+const outcomeClass = computed(() => {
+  switch (props.summary?.status) {
+    case "completed":
+      return "text-success-300";
+    case "cancelled":
+      return "text-surface-300";
+    case "failed":
+      return "text-red-400";
+    default:
+      return "text-yellow-400";
+  }
+});
 </script>
 
 <template>
@@ -38,8 +63,8 @@ const percent = computed(() =>
       <span v-else-if="error !== undefined" class="text-sm text-red-400">
         {{ error }}
       </span>
-      <span v-else class="text-sm text-success-300">
-        {{ summary?.status === "partial" ? "Stopped" : "Completed" }}
+      <span v-else :class="['text-sm', outcomeClass]">
+        {{ outcome }}
       </span>
       <span
         v-if="!running && summary !== undefined"

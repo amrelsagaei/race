@@ -21,6 +21,7 @@ export function useSeedEditor(initialRaw: string) {
     const isDark =
       document.documentElement.getAttribute("data-mode") === "dark";
     const extensions: Extension[] = [
+      EditorState.lineSeparator.of("\r\n"),
       lineNumbers(),
       history(),
       httpLanguage,

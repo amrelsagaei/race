@@ -1,20 +1,20 @@
 <script setup lang="ts">
 import Button from "primevue/button";
-import InputNumber from "primevue/inputnumber";
-import InputText from "primevue/inputtext";
 import SelectButton from "primevue/selectbutton";
 import type { RaceRunConfig, RaceSeed } from "shared";
 import { computed, ref } from "vue";
 
+import SettingsPane from "./SettingsPane.vue";
 import TransformPane from "./TransformPane.vue";
 import { useRaceConfig } from "./useRaceConfig";
 import { useSeedEditor } from "./useSeedEditor";
 
 defineOptions({ name: "RaceConfigForm" });
 
-const props = defineProps<{ seed: RaceSeed }>();
+const props = defineProps<{ seed: RaceSeed; http2Enabled: boolean }>();
 const emit = defineEmits<{
   run: [payload: { config: RaceRunConfig; seedRaw: string }];
+  invalid: [];
 }>();
 
 const {
@@ -26,10 +26,11 @@ const {
   jsHook,
   label,
   strategyOptions,
+  strategyNote,
   totalRequests,
   isLarge,
   buildConfig,
-} = useRaceConfig();
+} = useRaceConfig(() => props.http2Enabled);
 
 const { host: seedHost, read: readSeed } = useSeedEditor(props.seed.raw);
 
@@ -63,9 +64,11 @@ const segmentBorder = { root: { style: "border-color: var(--p-surface-700)" } };
 
 function onRun(): void {
   const config = buildConfig();
-  if (config !== undefined) {
-    emit("run", { config, seedRaw: readSeed() });
+  if (config === undefined) {
+    emit("invalid");
+    return;
   }
+  emit("run", { config, seedRaw: readSeed() });
 }
 </script>
 
@@ -81,54 +84,19 @@ function onRun(): void {
       :pt="segmentBorder"
     />
 
-    <div v-show="tab === 'settings'" class="flex flex-col gap-4">
-      <div class="grid grid-cols-2 gap-3">
-        <div class="flex flex-col gap-1">
-          <label class="text-sm text-surface-300">Requests per burst</label>
-          <InputNumber v-model="requestCount" :min="2" class="w-full" />
-        </div>
-        <div class="flex flex-col gap-1">
-          <label class="text-sm text-surface-300">Groups (bursts)</label>
-          <InputNumber v-model="groupCount" :min="1" class="w-full" />
-        </div>
-        <div class="flex flex-col gap-1">
-          <label class="text-sm text-surface-300"
-            >Between-group delay (ms)</label
-          >
-          <InputNumber v-model="betweenGroupDelayMs" :min="0" class="w-full" />
-        </div>
-        <div class="flex flex-col gap-1">
-          <label class="text-sm text-surface-300">Per-burst timeout (ms)</label>
-          <InputNumber v-model="timeoutMs" :min="0" class="w-full" />
-        </div>
-      </div>
-
-      <small v-if="isLarge" class="text-yellow-500">
-        This will fire and store {{ totalRequests }} requests. Large runs use
-        more disk in the project history.
-      </small>
-
-      <div class="flex flex-col gap-2">
-        <label class="text-sm text-surface-300">Strategy</label>
-        <SelectButton
-          v-model="strategy"
-          :options="strategyOptions"
-          option-label="label"
-          option-value="value"
-          :allow-empty="false"
-          :pt="{
-            root: {
-              style: 'width: fit-content; border-color: var(--p-surface-700)',
-            },
-          }"
-        />
-      </div>
-
-      <div class="flex flex-col gap-1">
-        <label class="text-sm text-surface-300">Label (optional)</label>
-        <InputText v-model="label" class="w-full" />
-      </div>
-    </div>
+    <SettingsPane
+      v-show="tab === 'settings'"
+      v-model:request-count="requestCount"
+      v-model:group-count="groupCount"
+      v-model:between-group-delay-ms="betweenGroupDelayMs"
+      v-model:timeout-ms="timeoutMs"
+      v-model:strategy="strategy"
+      v-model:label="label"
+      :strategy-options="strategyOptions"
+      :strategy-note="strategyNote"
+      :total-requests="totalRequests"
+      :is-large="isLarge"
+    />
 
     <div v-show="tab === 'seed'" class="flex flex-col gap-1">
       <label class="text-sm text-surface-300">

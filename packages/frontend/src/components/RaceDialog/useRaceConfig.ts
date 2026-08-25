@@ -8,9 +8,15 @@ import { computed, ref } from "vue";
 import { DEFAULT_TIMEOUT_MS } from "@/services/constants";
 import { strategyLabel } from "@/utils/format";
 
-const STRATEGIES: StrategyEnum[] = ["LastByteSynchronization", "Sequential"];
+const STRATEGIES: StrategyEnum[] = [
+  "LastByteSynchronization",
+  "SinglePacketAttack",
+  "Sequential",
+];
 
-export function useRaceConfig() {
+const NO_HTTP2 = "HTTP/2 is not enabled";
+
+export function useRaceConfig(isHttp2Enabled: () => boolean) {
   const requestCount = ref(20);
   const groupCount = ref(1);
   const betweenGroupDelayMs = ref(0);
@@ -22,10 +28,16 @@ export function useRaceConfig() {
   const totalRequests = computed(() => requestCount.value * groupCount.value);
   const isLarge = computed(() => totalRequests.value > 500);
 
-  const strategyOptions = STRATEGIES.map((value) => ({
-    label: strategyLabel(value),
-    value,
-  }));
+  const strategyOptions = computed(() =>
+    STRATEGIES.map((value) => ({
+      label: strategyLabel(value),
+      value,
+      disabled: value === "SinglePacketAttack" && !isHttp2Enabled(),
+    })),
+  );
+  const strategyNote = computed(() =>
+    isHttp2Enabled() ? undefined : NO_HTTP2,
+  );
 
   function buildConfig(): RaceRunConfig | undefined {
     const candidate = {
@@ -50,6 +62,7 @@ export function useRaceConfig() {
     jsHook,
     label,
     strategyOptions,
+    strategyNote,
     totalRequests,
     isLarge,
     buildConfig,

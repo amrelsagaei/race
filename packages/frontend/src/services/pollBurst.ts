@@ -8,6 +8,14 @@ import type { BurstEntry, PollResult } from "./types";
 
 import type { FrontendSDK } from "@/types";
 
+function toIso(value: Date | undefined): string | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? undefined : date.toISOString();
+}
+
 export async function pollUntilComplete(
   sdk: FrontendSDK,
   entryId: string,
@@ -21,14 +29,11 @@ export async function pollUntilComplete(
   let pipelineError: string | undefined;
 
   for (;;) {
-    if (shouldAbort()) {
-      return { entries, timedOut: true, pipelineError };
-    }
     const result = await sdk.graphql.replayEntry({
       id: entryId,
       sessionKind: SESSION_KIND_PIPELINE,
     });
-    const entry = result.replayEntry;
+    const entry = result?.replayEntry;
     if (
       entry !== null &&
       entry !== undefined &&
@@ -54,6 +59,7 @@ export async function pollUntilComplete(
           roundtripTime: response?.roundtripTime ?? undefined,
           length: response?.length ?? undefined,
           error: httpEntry.error ?? undefined,
+          sentAt: toIso(request?.createdAt ?? undefined),
         };
       });
       if (onPoll !== undefined) {
@@ -66,11 +72,14 @@ export async function pollUntilComplete(
             current.responseId !== undefined || current.error !== undefined,
         );
       if (settled) {
-        return { entries, timedOut: false, pipelineError };
+        return { entries, timedOut: false, aborted: false, pipelineError };
       }
     }
+    if (shouldAbort()) {
+      return { entries, timedOut: true, aborted: true, pipelineError };
+    }
     if (Date.now() >= deadline) {
-      return { entries, timedOut: true, pipelineError };
+      return { entries, timedOut: true, aborted: false, pipelineError };
     }
     await sleep(POLL_INTERVAL_MS);
   }

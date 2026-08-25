@@ -1,6 +1,8 @@
-import type { useConfirm } from "primevue/useconfirm";
+import type { ConfirmationOptions } from "primevue/confirmationoptions";
 
-type ConfirmService = ReturnType<typeof useConfirm>;
+type ConfirmService = {
+  require: (option: ConfirmationOptions) => void;
+};
 
 export function confirmDanger(
   confirm: ConfirmService,
