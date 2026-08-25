@@ -15,7 +15,7 @@ export default defineConfig({
   name: "Race",
   description:
     "Fire synchronized request bursts to catch HTTP race conditions.",
-  version: "0.1.0",
+  version: "0.2.0",
   author: {
     name: "Amr Elsagaei",
     email: "info@amrelsagaei.com",
@@ -40,6 +40,7 @@ export default defineConfig({
           rollupOptions: {
             external: [
               "@caido/frontend-sdk",
+              "@caido/sdk-frontend",
               "@codemirror/autocomplete",
               "@codemirror/commands",
               "@codemirror/language",
@@ -62,7 +63,6 @@ export default defineConfig({
         css: {
           postcss: {
             plugins: [
-              prefixwrap(`#plugin--${id}`),
               tailwindcss({
                 corePlugins: {
                   preflight: false,
@@ -74,6 +74,7 @@ export default defineConfig({
                 darkMode: ["selector", '[data-mode="dark"]'],
                 plugins: [tailwindPrimeui, tailwindCaido],
               }),
+              prefixwrap(`.plugin--${id}`),
             ],
           },
         },
