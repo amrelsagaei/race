@@ -13,7 +13,11 @@ import { formatSentAt } from "@/utils/format";
 
 defineOptions({ name: "RaceResultsTable" });
 
-const props = defineProps<{ sdk: FrontendSDK; rows: ResultRow[] }>();
+const props = defineProps<{
+  sdk: FrontendSDK;
+  rows: ResultRow[];
+  running?: boolean;
+}>();
 
 const selected = ref<ResultRow>();
 watch(
@@ -24,7 +28,7 @@ watch(
       current === undefined
         ? undefined
         : rows.find((row) => row.index === current.index);
-    selected.value = match ?? rows[0];
+    selected.value = match;
   },
   { immediate: true },
 );
@@ -32,6 +36,15 @@ watch(
 type BodyRowOptions = { context?: { selected?: boolean; index?: number } };
 
 const HOVER = "hover:bg-surface-300/20 dark:hover:bg-surface-700/50";
+const SKELETON = "block h-3 animate-pulse rounded bg-surface-600/40";
+
+function isPending(row: ResultRow): boolean {
+  return (
+    props.running === true &&
+    row.status === undefined &&
+    row.error === undefined
+  );
+}
 
 function rowClass(context: BodyRowOptions["context"]): string {
   if (context?.selected === true) {
@@ -45,7 +58,7 @@ function rowClass(context: BodyRowOptions["context"]): string {
 }
 
 const tablePt = {
-  table: { class: "w-full border-separate border-spacing-0" },
+  table: { class: "w-full table-fixed border-separate border-spacing-0" },
   bodyRow: (options: BodyRowOptions) => ({ class: rowClass(options.context) }),
 };
 
@@ -86,7 +99,9 @@ function statusCodeClass(code: number | undefined): string {
           </Column>
           <Column header="Path">
             <template #body="{ data }">
-              <span class="font-mono text-xs">{{ data.path }}</span>
+              <span class="block truncate font-mono text-xs" :title="data.path">
+                {{ data.path }}
+              </span>
             </template>
           </Column>
           <Column header="Sent at" style="width: 9rem">
@@ -105,24 +120,27 @@ function statusCodeClass(code: number | undefined): string {
               >
                 N/A
               </span>
+              <span v-else-if="isPending(data)" :class="SKELETON" class="w-8" />
               <span
                 v-else
                 :class="['font-mono text-xs', statusCodeClass(data.status)]"
               >
-                {{ data.status ?? "..." }}
+                {{ data.status }}
               </span>
             </template>
           </Column>
           <Column header="Length" style="width: 6rem">
             <template #body="{ data }">
-              <span class="font-mono text-xs text-surface-400">
+              <span v-if="isPending(data)" :class="SKELETON" class="w-10" />
+              <span v-else class="font-mono text-xs text-surface-400">
                 {{ data.length ?? "" }}
               </span>
             </template>
           </Column>
           <Column header="Time" style="width: 6rem">
             <template #body="{ data }">
-              <span class="font-mono text-xs text-surface-400">
+              <span v-if="isPending(data)" :class="SKELETON" class="w-12" />
+              <span v-else class="font-mono text-xs text-surface-400">
                 {{
                   data.time !== undefined ? Math.round(data.time) + " ms" : ""
                 }}
@@ -133,9 +151,20 @@ function statusCodeClass(code: number | undefined): string {
       </div>
     </SplitterPanel>
     <SplitterPanel :size="58" :min-size="20" class="min-h-0 overflow-hidden">
-      <div class="flex h-full min-h-0 flex-col">
+      <div
+        v-if="selected === undefined"
+        class="flex h-full flex-col items-center justify-center gap-2 text-surface-500"
+      >
+        <i class="fas fa-hand-pointer text-2xl" />
+        <span class="text-sm">{{
+          rows.length === 0 && running === true
+            ? "Waiting for the first response"
+            : "No request selected"
+        }}</span>
+      </div>
+      <div v-else class="flex h-full min-h-0 flex-col">
         <div
-          v-if="selected?.error !== undefined"
+          v-if="selected.error !== undefined"
           class="flex-shrink-0 bg-red-500/10 px-3 py-1 font-mono text-xs text-red-400"
         >
           {{ selected.error }}
@@ -143,8 +172,8 @@ function statusCodeClass(code: number | undefined): string {
         <div class="min-h-0 flex-1">
           <ResultEditors
             :sdk="sdk"
-            :request-raw="selected?.requestRaw ?? ''"
-            :response-raw="selected?.responseRaw ?? ''"
+            :request-raw="selected.requestRaw"
+            :response-raw="selected.responseRaw"
           />
         </div>
       </div>
