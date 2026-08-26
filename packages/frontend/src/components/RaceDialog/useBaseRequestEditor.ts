@@ -1,25 +1,23 @@
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
-import {
-  defaultHighlightStyle,
-  syntaxHighlighting,
-} from "@codemirror/language";
 import { EditorState, type Extension } from "@codemirror/state";
-import { oneDark } from "@codemirror/theme-one-dark";
 import { EditorView, keymap, lineNumbers } from "@codemirror/view";
 import { onBeforeUnmount, onMounted, ref } from "vue";
 
+import { editorTheme } from "./editorTheme";
 import { httpLanguage } from "./httpLanguage";
 
-export function useSeedEditor(initialRaw: string) {
+import { normalizeRequestHead } from "@/utils/http";
+
+export function useBaseRequestEditor(initialRaw: string) {
   const host = ref<HTMLDivElement>();
+  const normalised = normalizeRequestHead(initialRaw);
+  const edited = ref(normalised !== initialRaw);
   let view: EditorView | undefined;
 
   onMounted(() => {
     if (host.value === undefined) {
       return;
     }
-    const isDark =
-      document.documentElement.getAttribute("data-mode") === "dark";
     const extensions: Extension[] = [
       EditorState.lineSeparator.of("\r\n"),
       lineNumbers(),
@@ -27,25 +25,15 @@ export function useSeedEditor(initialRaw: string) {
       httpLanguage,
       EditorView.lineWrapping,
       keymap.of([...defaultKeymap, ...historyKeymap]),
-      EditorView.theme({
-        "&": {
-          fontSize: "13px",
-          height: "100%",
-          backgroundColor: "transparent",
-        },
-        "&.cm-editor.cm-focused": { outline: "none" },
-        ".cm-scroller": { overflow: "auto" },
-        ".cm-content": { fontFamily: "ui-monospace, monospace" },
-        ".cm-gutters": { backgroundColor: "transparent", border: "none" },
+      EditorView.updateListener.of((update) => {
+        if (update.docChanged) {
+          edited.value = true;
+        }
       }),
+      ...editorTheme({ height: "100%" }),
     ];
-    if (isDark) {
-      extensions.push(oneDark);
-    } else {
-      extensions.push(syntaxHighlighting(defaultHighlightStyle));
-    }
     view = new EditorView({
-      state: EditorState.create({ doc: initialRaw, extensions }),
+      state: EditorState.create({ doc: normalised, extensions }),
       parent: host.value,
     });
   });
@@ -56,8 +44,8 @@ export function useSeedEditor(initialRaw: string) {
   });
 
   function read(): string {
-    return view !== undefined ? view.state.doc.toString() : initialRaw;
+    return view === undefined ? normalised : view.state.sliceDoc();
   }
 
-  return { host, read };
+  return { host, read, edited };
 }
