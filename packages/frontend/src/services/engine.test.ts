@@ -1,11 +1,7 @@
-import {
-  err,
-  ok,
-  type RaceGroup,
-  type RaceRunConfig,
-  type RaceSeed,
-} from "shared";
+import { err, ok } from "shared";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
+import { baseRequest, config, group, summary } from "./__tests__/fixtures";
 
 import type { FrontendSDK } from "@/types";
 
@@ -18,46 +14,6 @@ vi.mock("./collection", () => ({ ensureRaceCollection }));
 vi.mock("./script", () => ({ runTransform }));
 
 const { runRace } = await import("./engine");
-
-const seed: RaceSeed = {
-  raw: "GET / HTTP/1.1\r\nHost: example.com\r\n\r\n",
-  connection: { host: "example.com", port: 443, isTls: true },
-};
-
-const config: RaceRunConfig = {
-  requestCount: 2,
-  groupCount: 2,
-  betweenGroupDelayMs: 0,
-  timeoutMs: 10000,
-  strategy: "LastByteSynchronization",
-};
-
-const summary = {
-  id: "race_test",
-  createdAt: "2026-07-07T00:00:00.000Z",
-  target: seed.connection,
-  status: "running" as const,
-  strategy: config.strategy,
-  groupCount: config.groupCount,
-  requestCount: config.requestCount,
-  completedGroups: 0,
-  entryCount: 0,
-  completedCount: 0,
-  errorCount: 0,
-  codeCounts: {},
-};
-
-const group = (index: number): RaceGroup => ({
-  index,
-  startedAt: "2026-07-07T00:00:00.000Z",
-  entries: [
-    {
-      request: { raw: seed.raw, connection: seed.connection },
-      response: { raw: "HTTP/1.1 200 OK\r\n\r\n", statusCode: 200 },
-      status: "received",
-    },
-  ],
-});
 
 const backend = {
   persistRun: vi.fn(),
@@ -83,7 +39,7 @@ describe("runRace", () => {
     runBurst.mockImplementation((_sdk, params: { index: number }) =>
       Promise.resolve(ok(group(params.index))),
     );
-    const result = await runRace(sdk, seed, config, never, undefined);
+    const result = await runRace(sdk, baseRequest, config, never, undefined);
     expect(backend.appendGroup).toHaveBeenCalledTimes(2);
     expect(backend.updateStatus).toHaveBeenLastCalledWith(
       summary.id,
@@ -96,14 +52,14 @@ describe("runRace", () => {
 
   it("marks the run failed when a burst throws", async () => {
     runBurst.mockRejectedValue(new Error("boom"));
-    const result = await runRace(sdk, seed, config, never, undefined);
+    const result = await runRace(sdk, baseRequest, config, never, undefined);
     expect(backend.updateStatus).toHaveBeenCalledWith(summary.id, "failed");
     expect(result).toEqual(err("boom"));
   });
 
   it("marks the run failed when a burst returns an error", async () => {
     runBurst.mockResolvedValue(err("rejected"));
-    const result = await runRace(sdk, seed, config, never, undefined);
+    const result = await runRace(sdk, baseRequest, config, never, undefined);
     expect(backend.updateStatus).toHaveBeenCalledWith(summary.id, "failed");
     expect(result).toEqual(err("rejected"));
   });
@@ -111,7 +67,7 @@ describe("runRace", () => {
   it("marks the run cancelled when aborted before the first burst", async () => {
     const result = await runRace(
       sdk,
-      seed,
+      baseRequest,
       config,
       { shouldAbort: () => true },
       undefined,
@@ -129,7 +85,7 @@ describe("runRace", () => {
     });
     await runRace(
       sdk,
-      seed,
+      baseRequest,
       { ...config, groupCount: 1 },
       { shouldAbort: () => aborted },
       undefined,
@@ -148,7 +104,10 @@ describe("runRace", () => {
           ...group(params.index),
           entries: [
             {
-              request: { raw: seed.raw, connection: seed.connection },
+              request: {
+                raw: baseRequest.raw,
+                connection: baseRequest.connection,
+              },
               status: "error" as const,
               error: "failed to parse request",
             },
@@ -156,7 +115,7 @@ describe("runRace", () => {
         }),
       ),
     );
-    await runRace(sdk, seed, config, never, undefined);
+    await runRace(sdk, baseRequest, config, never, undefined);
     expect(backend.updateStatus).toHaveBeenLastCalledWith(summary.id, "failed");
   });
 
@@ -168,7 +127,10 @@ describe("runRace", () => {
           entries: [
             ...group(params.index).entries,
             {
-              request: { raw: seed.raw, connection: seed.connection },
+              request: {
+                raw: baseRequest.raw,
+                connection: baseRequest.connection,
+              },
               status: "error" as const,
               error: "Timed out waiting for a response",
             },
@@ -176,7 +138,7 @@ describe("runRace", () => {
         }),
       ),
     );
-    await runRace(sdk, seed, config, never, undefined);
+    await runRace(sdk, baseRequest, config, never, undefined);
     expect(backend.updateStatus).toHaveBeenLastCalledWith(
       summary.id,
       "partial",
@@ -187,7 +149,7 @@ describe("runRace", () => {
     runTransform.mockResolvedValue(err("SyntaxError"));
     const result = await runRace(
       sdk,
-      seed,
+      baseRequest,
       { ...config, jsHook: "return (" },
       never,
       undefined,
