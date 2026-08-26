@@ -15,7 +15,7 @@ export default defineConfig({
   name: "Race",
   description:
     "Fire synchronized request bursts to catch HTTP race conditions.",
-  version: "0.2.0",
+  version: "0.2.1",
   author: {
     name: "Amr Elsagaei",
     email: "info@amrelsagaei.com",
