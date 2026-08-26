@@ -49,6 +49,18 @@ export function timingRange(
   return low === high ? `${low} ms` : `${low}-${high} ms`;
 }
 
+const STATUS_LABELS: Record<RunStatus, string> = {
+  running: "Running",
+  completed: "Completed",
+  partial: "Incomplete",
+  cancelled: "Cancelled",
+  failed: "Failed",
+};
+
+export function runStatusLabel(status: RunStatus): string {
+  return STATUS_LABELS[status];
+}
+
 export function statusClass(status: RunStatus): string {
   switch (status) {
     case "completed":
