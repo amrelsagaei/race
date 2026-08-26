@@ -4,7 +4,23 @@ import InputText from "primevue/inputtext";
 import SelectButton from "primevue/selectbutton";
 import type { StrategyEnum } from "shared";
 
+import FieldHint from "./FieldHint.vue";
+
 defineOptions({ name: "RaceSettingsPane" });
+
+const HINTS = {
+  requests:
+    "How many requests are fired together in one burst. This is the size of the race itself.",
+  groups:
+    "How many times the burst is repeated. Each group is a fresh, separately synchronised burst.",
+  delay:
+    "How long to wait between groups. It does not affect timing inside a burst, only the gap between them.",
+  timeout:
+    "How long to wait for a burst's responses before giving up on it and moving on.",
+  strategy:
+    "Last-byte sync holds every request open and releases the final bytes together. Single packet puts the whole burst in one TCP packet over HTTP/2. Sequential sends them one after another as a control run.",
+  label: "An optional name to help you recognise this run in the history.",
+};
 
 defineProps<{
   strategyOptions: Array<{
@@ -25,68 +41,80 @@ const betweenGroupDelayMs = defineModel<number>("betweenGroupDelayMs", {
 const timeoutMs = defineModel<number>("timeoutMs", { required: true });
 const strategy = defineModel<StrategyEnum>("strategy", { required: true });
 const label = defineModel<string>("label", { required: true });
+
+const numberFields = [
+  {
+    id: "race-requests",
+    text: "Requests per burst",
+    hint: HINTS.requests,
+    model: requestCount,
+    min: 2,
+    max: 500,
+  },
+  {
+    id: "race-groups",
+    text: "Groups (bursts)",
+    hint: HINTS.groups,
+    model: groupCount,
+    min: 1,
+    max: 100,
+  },
+  {
+    id: "race-delay",
+    text: "Between-group delay (ms)",
+    hint: HINTS.delay,
+    model: betweenGroupDelayMs,
+    min: 0,
+    max: 600000,
+  },
+  {
+    id: "race-timeout",
+    text: "Per-burst timeout (ms)",
+    hint: HINTS.timeout,
+    model: timeoutMs,
+    min: 100,
+    max: 600000,
+  },
+];
 </script>
 
 <template>
   <div class="flex flex-col gap-4">
     <div class="grid grid-cols-2 gap-3">
-      <div class="flex flex-col gap-1">
-        <label for="race-requests" class="text-sm text-surface-300">
-          Requests per burst
+      <div
+        v-for="field in numberFields"
+        :key="field.id"
+        class="flex flex-col gap-1"
+      >
+        <label
+          :for="field.id"
+          class="flex items-center gap-1.5 text-sm text-surface-300"
+        >
+          {{ field.text }}
+          <FieldHint :text="field.hint" />
         </label>
         <InputNumber
-          v-model="requestCount"
-          input-id="race-requests"
+          v-model="field.model.value"
+          :input-id="field.id"
           :allow-empty="false"
-          :min="2"
-          class="w-full"
-        />
-      </div>
-      <div class="flex flex-col gap-1">
-        <label for="race-groups" class="text-sm text-surface-300">
-          Groups (bursts)
-        </label>
-        <InputNumber
-          v-model="groupCount"
-          input-id="race-groups"
-          :allow-empty="false"
-          :min="1"
-          class="w-full"
-        />
-      </div>
-      <div class="flex flex-col gap-1">
-        <label for="race-delay" class="text-sm text-surface-300">
-          Between-group delay (ms)
-        </label>
-        <InputNumber
-          v-model="betweenGroupDelayMs"
-          input-id="race-delay"
-          :allow-empty="false"
-          :min="0"
-          class="w-full"
-        />
-      </div>
-      <div class="flex flex-col gap-1">
-        <label for="race-timeout" class="text-sm text-surface-300">
-          Per-burst timeout (ms)
-        </label>
-        <InputNumber
-          v-model="timeoutMs"
-          input-id="race-timeout"
-          :allow-empty="false"
-          :min="0"
+          :min="field.min"
+          :max="field.max"
+          :max-fraction-digits="0"
           class="w-full"
         />
       </div>
     </div>
 
     <small v-if="isLarge" class="text-yellow-500">
-      This will fire and store {{ totalRequests }} requests. Large runs use more
-      disk in the project history.
+      This will fire and store {{ totalRequests.toLocaleString() }} requests.
+      Large runs use more disk in the project history.
     </small>
 
     <div class="flex flex-col gap-2">
-      <label class="text-sm text-surface-300">Strategy</label>
+      <label class="flex items-center gap-1.5 text-sm text-surface-300">
+        Strategy
+        <FieldHint :text="HINTS.strategy" />
+      </label>
       <div class="flex items-center gap-3">
         <SelectButton
           v-model="strategy"
@@ -108,10 +136,19 @@ const label = defineModel<string>("label", { required: true });
     </div>
 
     <div class="flex flex-col gap-1">
-      <label for="race-label" class="text-sm text-surface-300">
+      <label
+        for="race-label"
+        class="flex items-center gap-1.5 text-sm text-surface-300"
+      >
         Label (optional)
+        <FieldHint :text="HINTS.label" />
       </label>
-      <InputText v-model="label" input-id="race-label" class="w-full" />
+      <InputText
+        id="race-label"
+        v-model="label"
+        maxlength="120"
+        class="w-full"
+      />
     </div>
   </div>
 </template>

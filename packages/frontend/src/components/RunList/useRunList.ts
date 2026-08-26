@@ -25,7 +25,10 @@ export function useRunList() {
   function confirmClear(): void {
     confirmDanger(confirm, {
       header: "Clear runs",
-      message: "Delete all race runs? This cannot be undone.",
+      message:
+        runningId.value === undefined
+          ? "Delete all race runs? This cannot be undone."
+          : "A race is still running. Delete all runs and stop it? This cannot be undone.",
       acceptLabel: "Delete all",
       onAccept: () => {
         void store.clear();

@@ -1,4 +1,4 @@
-import type { RaceRunConfig, RaceRunSummary, RaceSeed } from "shared";
+import type { RaceBaseRequest, RaceRunConfig, RaceRunSummary } from "shared";
 import { computed, ref } from "vue";
 
 import { activeRun } from "@/services/activeRun";
@@ -6,7 +6,7 @@ import { runRace } from "@/services/engine";
 import { runToRows } from "@/services/rows";
 import type { LiveResult, ResultRow } from "@/services/types";
 import type { FrontendSDK } from "@/types";
-import { getErrorMessage } from "@/utils/errors";
+import { getErrorMessage, toFriendly } from "@/utils/errors";
 
 function liveToRow(result: LiveResult): ResultRow {
   return {
@@ -31,7 +31,10 @@ export function useRaceRun(sdk: FrontendSDK) {
 
   const running = computed(() => phase.value === "running");
 
-  async function start(seed: RaceSeed, config: RaceRunConfig): Promise<void> {
+  async function start(
+    baseRequest: RaceBaseRequest,
+    config: RaceRunConfig,
+  ): Promise<void> {
     phase.value = "running";
     rows.value = [];
     summary.value = undefined;
@@ -48,7 +51,7 @@ export function useRaceRun(sdk: FrontendSDK) {
       });
       const result = await runRace(
         sdk,
-        seed,
+        baseRequest,
         config,
         { shouldAbort: () => activeRun.shouldAbort() || projectChanged },
         (update) => {
@@ -59,7 +62,7 @@ export function useRaceRun(sdk: FrontendSDK) {
         },
       );
       if (result.kind === "Error") {
-        errorMessage.value = result.error;
+        errorMessage.value = toFriendly(result.error);
       } else {
         summary.value = result.value;
       }

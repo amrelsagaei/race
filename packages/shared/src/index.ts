@@ -18,7 +18,7 @@ export {
 } from "./enums";
 
 export { RaceConnectionSchema, type RaceConnection } from "./connection";
-export { RaceSeedSchema, type RaceSeed } from "./seed";
+export { RaceBaseRequestSchema, type RaceBaseRequest } from "./baseRequest";
 export { RaceRunConfigSchema, type RaceRunConfig } from "./config";
 export {
   RaceEntrySchema,

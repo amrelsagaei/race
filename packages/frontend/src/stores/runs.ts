@@ -51,6 +51,7 @@ export const useRunsStore = defineStore("race.runs", () => {
       sdk.value.window.showToast(result.error, { variant: "error" });
       return;
     }
+    sdk.value.window.showToast("All runs deleted", { variant: "success" });
     await load();
   }
 
@@ -59,7 +60,11 @@ export const useRunsStore = defineStore("race.runs", () => {
       return undefined;
     }
     const result = await sdk.value.backend.getRun(runId);
-    return result.kind === "Ok" ? result.value : undefined;
+    if (result.kind === "Error") {
+      sdk.value.window.showToast(result.error, { variant: "error" });
+      return undefined;
+    }
+    return result.value;
   }
 
   function initialize(frontendSdk: FrontendSDK): void {

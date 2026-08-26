@@ -1,6 +1,7 @@
-import { ok, type RaceSeed } from "shared";
+import { ok } from "shared";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { baseRequest } from "./__tests__/fixtures";
 import { pipelineSettingsCandidates } from "./constants";
 import type { BurstParams } from "./types";
 
@@ -16,14 +17,9 @@ vi.mock("./capture", () => ({ buildRaceGroup }));
 
 const { runBurst } = await import("./pipeline");
 
-const seed: RaceSeed = {
-  raw: "GET / HTTP/1.1\r\nHost: example.com\r\n\r\n",
-  connection: { host: "example.com", port: 443, isTls: true },
-};
-
 const source = {
   raw: {
-    raw: seed.raw,
+    raw: baseRequest.raw,
     connectionInfo: {
       host: "example.com",
       port: 443,
@@ -34,7 +30,7 @@ const source = {
 };
 
 const params: BurstParams = {
-  seed,
+  baseRequest,
   count: 2,
   script: undefined,
   collectionId: undefined,

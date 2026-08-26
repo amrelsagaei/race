@@ -13,10 +13,14 @@ type RaceStorage = { collectionId?: string };
 let markedId: string | undefined;
 let marker: Indicator | undefined;
 
+function readStorage(sdk: FrontendSDK): RaceStorage | undefined {
+  return sdk.storage.get() as RaceStorage | undefined;
+}
+
 export async function ensureRaceCollection(
   sdk: FrontendSDK,
 ): Promise<string | undefined> {
-  const stored = sdk.storage.get() as RaceStorage | undefined;
+  const stored = readStorage(sdk);
   const existing = findCollection(sdk, stored?.collectionId);
   if (existing !== undefined) {
     if (existing !== stored?.collectionId) {
@@ -36,7 +40,7 @@ export async function ensureRaceCollection(
 }
 
 export function markExistingRaceCollection(sdk: FrontendSDK): void {
-  const stored = sdk.storage.get() as RaceStorage | undefined;
+  const stored = readStorage(sdk);
   const existing = findCollection(sdk, stored?.collectionId);
   if (existing !== undefined) {
     markRaceCollection(sdk, existing);

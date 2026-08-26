@@ -1,7 +1,7 @@
 import type {
   EntryStatus,
+  RaceBaseRequest,
   RaceConnection,
-  RaceSeed,
   StrategyEnum,
 } from "shared";
 
@@ -70,7 +70,7 @@ export type ResultRow = {
 };
 
 export type BurstParams = {
-  seed: RaceSeed;
+  baseRequest: RaceBaseRequest;
   count: number;
   script: string | undefined;
   collectionId: string | undefined;

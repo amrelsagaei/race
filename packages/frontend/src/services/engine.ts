@@ -1,8 +1,8 @@
 import {
   err,
+  type RaceBaseRequest,
   type RaceRunConfig,
   type RaceRunSummary,
-  type RaceSeed,
   type Result,
 } from "shared";
 
@@ -19,7 +19,7 @@ import { getErrorMessage } from "@/utils/errors";
 
 export async function runRace(
   sdk: FrontendSDK,
-  seed: RaceSeed,
+  baseRequest: RaceBaseRequest,
   config: RaceRunConfig,
   controls: RaceControls,
   onProgress: ProgressCallback | undefined,
@@ -27,7 +27,14 @@ export async function runRace(
   const script = config.jsHook;
   if (script !== undefined && script.trim() !== "") {
     const preflight = await runTransform(
-      [{ raw: seed.raw, index: 0, count: config.requestCount, group: 0 }],
+      [
+        {
+          raw: baseRequest.raw,
+          index: 0,
+          count: config.requestCount,
+          group: 0,
+        },
+      ],
       script,
       TRANSFORM_TIMEOUT_MS,
     );
@@ -39,7 +46,7 @@ export async function runRace(
   const collectionId = await ensureRaceCollection(sdk);
   return runGroups(
     sdk,
-    seed,
+    baseRequest,
     config,
     controls,
     onProgress,
@@ -50,7 +57,7 @@ export async function runRace(
 
 async function runGroups(
   sdk: FrontendSDK,
-  seed: RaceSeed,
+  baseRequest: RaceBaseRequest,
   config: RaceRunConfig,
   controls: RaceControls,
   onProgress: ProgressCallback | undefined,
@@ -59,7 +66,7 @@ async function runGroups(
 ): Promise<Result<RaceRunSummary>> {
   const created = await sdk.backend.persistRun({
     config,
-    target: seed.connection,
+    target: baseRequest.connection,
     label: config.label,
   });
   if (created.kind === "Error") {
@@ -76,7 +83,7 @@ async function runGroups(
         return await sdk.backend.updateStatus(runId, "cancelled");
       }
       const burst = await runBurst(sdk, {
-        seed,
+        baseRequest,
         count: config.requestCount,
         script,
         collectionId,

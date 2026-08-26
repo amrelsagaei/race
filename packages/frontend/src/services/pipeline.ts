@@ -19,7 +19,7 @@ export async function runBurst(
   params: BurstParams,
 ): Promise<Result<RaceGroup>> {
   const sources = await buildRequestSources(
-    params.seed,
+    params.baseRequest,
     params.count,
     params.index,
     params.script,

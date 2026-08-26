@@ -3,21 +3,13 @@ import {
   autocompletion,
   type CompletionContext,
 } from "@codemirror/autocomplete";
-import {
-  defaultKeymap,
-  history,
-  historyKeymap,
-  indentWithTab,
-} from "@codemirror/commands";
+import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { javascript, javascriptLanguage } from "@codemirror/lang-javascript";
-import {
-  defaultHighlightStyle,
-  syntaxHighlighting,
-} from "@codemirror/language";
 import { EditorState, type Extension } from "@codemirror/state";
-import { oneDark } from "@codemirror/theme-one-dark";
 import { EditorView, keymap, lineNumbers } from "@codemirror/view";
 import { onBeforeUnmount, onMounted, ref, watch } from "vue";
+
+import { editorTheme } from "./editorTheme";
 
 defineOptions({ name: "RaceScriptEditor" });
 
@@ -28,7 +20,7 @@ const container = ref<HTMLDivElement>();
 let view: EditorView | undefined;
 
 const COMPLETIONS = [
-  { label: "input.raw", type: "variable", info: "Seed request as a string" },
+  { label: "input.raw", type: "variable", info: "Base request as a string" },
   { label: "input.index", type: "variable", info: "0-based burst position" },
   { label: "input.count", type: "variable", info: "Requests in the burst" },
   {
@@ -68,7 +60,6 @@ function createEditor(): void {
   if (container.value === undefined) {
     return;
   }
-  const isDark = document.documentElement.getAttribute("data-mode") === "dark";
   const extensions: Extension[] = [
     lineNumbers(),
     history(),
@@ -76,32 +67,14 @@ function createEditor(): void {
     javascriptLanguage.data.of({ autocomplete: raceCompletions }),
     autocompletion(),
     EditorView.lineWrapping,
-    keymap.of([...defaultKeymap, ...historyKeymap, indentWithTab]),
+    keymap.of([...defaultKeymap, ...historyKeymap]),
     EditorView.updateListener.of((update) => {
       if (update.docChanged) {
         emit("update:modelValue", update.state.doc.toString());
       }
     }),
-    EditorView.theme({
-      "&": {
-        fontSize: "13px",
-        backgroundColor: "transparent",
-        maxHeight: "260px",
-      },
-      "&.cm-editor.cm-focused": { outline: "none" },
-      ".cm-scroller": { overflow: "auto" },
-      ".cm-content": {
-        fontFamily: "ui-monospace, monospace",
-        minHeight: "140px",
-      },
-      ".cm-gutters": { backgroundColor: "transparent", border: "none" },
-    }),
+    ...editorTheme({ maxHeight: "260px", minContentHeight: "140px" }),
   ];
-  if (isDark) {
-    extensions.push(oneDark);
-  } else {
-    extensions.push(syntaxHighlighting(defaultHighlightStyle));
-  }
   view = new EditorView({
     state: EditorState.create({ doc: props.modelValue, extensions }),
     parent: container.value,
