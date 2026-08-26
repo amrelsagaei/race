@@ -1,19 +1,22 @@
 <script setup lang="ts">
 import Button from "primevue/button";
 import SelectButton from "primevue/selectbutton";
-import type { RaceRunConfig, RaceSeed } from "shared";
+import type { RaceBaseRequest, RaceRunConfig } from "shared";
 import { computed, ref } from "vue";
 
 import SettingsPane from "./SettingsPane.vue";
 import TransformPane from "./TransformPane.vue";
+import { useBaseRequestEditor } from "./useBaseRequestEditor";
 import { useRaceConfig } from "./useRaceConfig";
-import { useSeedEditor } from "./useSeedEditor";
 
 defineOptions({ name: "RaceConfigForm" });
 
-const props = defineProps<{ seed: RaceSeed; http2Enabled: boolean }>();
+const props = defineProps<{
+  baseRequest: RaceBaseRequest;
+  http2Enabled: boolean;
+}>();
 const emit = defineEmits<{
-  run: [payload: { config: RaceRunConfig; seedRaw: string }];
+  run: [payload: { config: RaceRunConfig; raw: string }];
   invalid: [];
 }>();
 
@@ -32,17 +35,21 @@ const {
   buildConfig,
 } = useRaceConfig(() => props.http2Enabled);
 
-const { host: seedHost, read: readSeed } = useSeedEditor(props.seed.raw);
+const {
+  host: editorHost,
+  read: readRequest,
+  edited: requestEdited,
+} = useBaseRequestEditor(props.baseRequest.raw);
 
-const steps: Array<"settings" | "seed" | "script"> = [
+const steps: Array<"settings" | "request" | "script"> = [
   "settings",
-  "seed",
+  "request",
   "script",
 ];
-const tab = ref<"settings" | "seed" | "script">("settings");
+const tab = ref<"settings" | "request" | "script">("settings");
 const tabOptions = [
   { label: "Settings", value: "settings" },
-  { label: "Seed request", value: "seed" },
+  { label: "Base request", value: "request" },
   { label: "Transform", value: "script" },
 ];
 
@@ -68,7 +75,7 @@ function onRun(): void {
     emit("invalid");
     return;
   }
-  emit("run", { config, seedRaw: readSeed() });
+  emit("run", { config, raw: readRequest() });
 }
 </script>
 
@@ -98,12 +105,19 @@ function onRun(): void {
       :is-large="isLarge"
     />
 
-    <div v-show="tab === 'seed'" class="flex flex-col gap-1">
-      <label class="text-sm text-surface-300">
-        Edit the request that will be fired.
-      </label>
+    <div v-show="tab === 'request'" class="flex flex-col gap-1">
+      <div class="flex items-baseline justify-between gap-3">
+        <label class="text-sm text-surface-300">
+          Edit the request that will be fired.
+        </label>
+        <small v-if="requestEdited" class="text-yellow-500">
+          <i class="fas fa-triangle-exclamation" />
+          Content-Length is not recalculated. Fix it here, or call
+          fixContentLength in the Transform tab.
+        </small>
+      </div>
       <div
-        ref="seedHost"
+        ref="editorHost"
         class="h-80 border border-surface-700 rounded overflow-hidden [&>*]:h-full"
       />
     </div>

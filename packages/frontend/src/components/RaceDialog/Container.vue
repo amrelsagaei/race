@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { RaceRunConfig, RaceSeed } from "shared";
+import type { RaceBaseRequest, RaceRunConfig } from "shared";
 import { onBeforeUnmount, onMounted, ref } from "vue";
 
 import ConfigForm from "./ConfigForm.vue";
@@ -7,12 +7,12 @@ import ResultsView from "./ResultsView.vue";
 import { useRaceRun } from "./useRaceRun";
 
 import { isHttp2Enabled } from "@/services/http2";
-import { resetRaceView } from "@/services/selection";
+import { openRun } from "@/services/selection";
 import type { FrontendSDK } from "@/types";
 
 defineOptions({ name: "RaceDialog" });
 
-const props = defineProps<{ sdk: FrontendSDK; seed: RaceSeed }>();
+const props = defineProps<{ sdk: FrontendSDK; baseRequest: RaceBaseRequest }>();
 const emit = defineEmits<{ close: [] }>();
 
 const { phase, rows, summary, errorMessage, running, start, stop, reset } =
@@ -28,8 +28,8 @@ onMounted(() => {
   void loadHttp2();
 });
 
-function onRun(payload: { config: RaceRunConfig; seedRaw: string }): void {
-  void start({ ...props.seed, raw: payload.seedRaw }, payload.config);
+function onRun(payload: { config: RaceRunConfig; raw: string }): void {
+  void start({ ...props.baseRequest, raw: payload.raw }, payload.config);
 }
 
 function onInvalid(): void {
@@ -39,7 +39,7 @@ function onInvalid(): void {
 }
 
 function openHistory(): void {
-  resetRaceView();
+  openRun.value = summary.value;
   props.sdk.navigation.goTo("/race");
   emit("close");
 }
@@ -61,7 +61,7 @@ onBeforeUnmount(() => {
     >
       <ConfigForm
         v-show="phase === 'config'"
-        :seed="props.seed"
+        :base-request="props.baseRequest"
         :http2-enabled="http2Enabled"
         @run="onRun"
         @invalid="onInvalid"

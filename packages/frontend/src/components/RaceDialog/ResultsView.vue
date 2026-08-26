@@ -57,8 +57,22 @@ const outcomeClass = computed(() => {
 <template>
   <div class="flex flex-col gap-3 h-full min-h-0">
     <div class="flex items-center gap-3 flex-shrink-0">
-      <span v-if="running" class="text-sm text-surface-200">
+      <span
+        v-if="running"
+        class="flex items-center gap-2 text-sm text-surface-200"
+      >
         Running the burst
+        <span class="flex items-center gap-1">
+          <span class="h-1 w-1 animate-pulse rounded-full bg-surface-300" />
+          <span
+            class="h-1 w-1 animate-pulse rounded-full bg-surface-300"
+            style="animation-delay: 200ms"
+          />
+          <span
+            class="h-1 w-1 animate-pulse rounded-full bg-surface-300"
+            style="animation-delay: 400ms"
+          />
+        </span>
       </span>
       <span v-else-if="error !== undefined" class="text-sm text-red-400">
         {{ error }}
@@ -67,7 +81,7 @@ const outcomeClass = computed(() => {
         {{ outcome }}
       </span>
       <span
-        v-if="!running && summary !== undefined"
+        v-if="!running && summary !== undefined && summary.completedCount > 0"
         class="text-xs text-surface-400"
       >
         {{ statusCodeSummary(summary.codeCounts) }} |
@@ -87,7 +101,7 @@ const outcomeClass = computed(() => {
     />
 
     <div class="flex-1 min-h-0">
-      <ResultsTable :sdk="sdk" :rows="rows" />
+      <ResultsTable :sdk="sdk" :rows="rows" :running="running" />
     </div>
 
     <div class="flex justify-end gap-2 pt-2 flex-shrink-0">
