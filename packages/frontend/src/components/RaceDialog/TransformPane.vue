@@ -11,9 +11,16 @@ const model = defineModel<string>({ required: true });
 
 const STARTER = "return input.raw;";
 
+let stashed = "";
+
 const enabled = computed(() => model.value.trim() !== "");
 function onToggle(value: boolean): void {
-  model.value = value ? STARTER : "";
+  if (!value) {
+    stashed = model.value;
+    model.value = "";
+    return;
+  }
+  model.value = stashed.trim() === "" ? STARTER : stashed;
 }
 </script>
 

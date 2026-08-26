@@ -1,6 +1,6 @@
 import type { DialogComponent } from "@caido/sdk-frontend";
 
-import { extractSeed } from "./seed";
+import { extractBaseRequest } from "./baseRequest";
 
 import { RaceDialog } from "@/components/RaceDialog";
 import { activeRun } from "@/services/activeRun";
@@ -15,20 +15,20 @@ export async function openRaceDialog(
     return;
   }
 
-  const seed = await extractSeed(sdk, context);
+  const baseRequest = await extractBaseRequest(sdk, context);
   if (activeRun.isActive()) {
     sdk.window.showToast("A race is already running", { variant: "warning" });
     return;
   }
-  if (seed.kind === "Error") {
-    sdk.window.showToast(seed.error, { variant: "warning" });
+  if (baseRequest.kind === "Error") {
+    sdk.window.showToast(baseRequest.error, { variant: "warning" });
     return;
   }
 
   const dialog = sdk.window.showDialog(
     {
       component: RaceDialog as DialogComponent["component"],
-      props: { seed: seed.value, sdk },
+      props: { baseRequest: baseRequest.value, sdk },
       events: {
         close: () => {
           dialog.close();
@@ -39,7 +39,7 @@ export async function openRaceDialog(
       title: "Configure Race",
       modal: true,
       draggable: true,
-      closeOnEscape: true,
+      closeOnEscape: false,
     },
   );
 }
